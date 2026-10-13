@@ -27,11 +27,21 @@ public class EmpresaService {
         return repositorio.porSlug(slug);
     }
 
-    public Empresa criar(Empresa nova) {
-        Empresa comId = new Empresa(
+    public Empresa criar(EmpresaEntrada entrada) {
+    // Checagem de REGRA DE NEGÓCIO (slug repetido)
+        if (repositorio.porSlug(entrada.slug()).isPresent()) {
+            throw new RecursoJaExiste("Empresa " + entrada.slug() + " já existe.");
+        }
+
+        Empresa nova = new Empresa(
             UUID.randomUUID().toString(),
-            nova.nome(), nova.slug(), nova.site(), nova.descricao());
-        return repositorio.salvar(comId);
+            entrada.nome(),
+            entrada.slug(),
+            entrada.site(),
+            entrada.descricao()
+        );
+
+        return repositorio.salvar(nova);
     }
 
     public boolean apagar(String slug) {
