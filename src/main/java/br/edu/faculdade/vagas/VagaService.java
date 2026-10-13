@@ -1,63 +1,44 @@
-package br.edu.faculdade.vagas;
-
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-/**
- * Onde a decisão mora — e, desde a aula 04, onde a tradução mora também:
- * VagaEntrada vira Vaga na hora de gravar, e Vaga vira VagaResposta na hora de
- * responder. O controller só fala HTTP; quem monta objeto de domínio é aqui.
- */
 @Service
 public class VagaService {
 
-    private final VagaRepository repositorio;
+    private final VagaRepository repository;
 
-    public VagaService(VagaRepository repositorio) {
-        this.repositorio = repositorio;
+    public VagaService(VagaRepository repository) {
+        this.repository = repository;
     }
 
-    public List<VagaResposta> listar() {
-        return repositorio.todas().stream()
-                .map(this::paraResposta)
-                .toList();
+    public List<Vaga> listar() {
+        return repository.todas();
     }
 
-    public Optional<VagaResposta> buscarPorId(String id) {
-        return repositorio.porId(id).map(this::paraResposta);
+    // Nenhum ResponseEntity por aqui: o service não conhece HTTP.
+    public Optional<Vaga> buscarPorId(String id) {
+        return repository.porId(id);
     }
 
-    // Boolean.TRUE.equals: null, que é como "não respondeu" chega, vira false.
-    public VagaResposta criar(VagaEntrada entrada) {
-        Vaga nova = new Vaga(
-                UUID.randomUUID().toString(),
-                entrada.titulo(), entrada.descricao(), entrada.area(),
-                entrada.senioridade(), entrada.local(),
-                Boolean.TRUE.equals(entrada.aceitaIniciante()), entrada.empresaSlug());
-
-        return paraResposta(repositorio.salvar(nova));
-    }
-
-
-    public Optional<VagaResposta> trocar(String id, VagaEntrada nova) {
+    // O id nasce AQUI. Se viesse do cliente, dois clientes poderiam
+    // escolher o mesmo e um sobrescreveria o outro em silêncio.
+    public Vaga criar(Vaga nova) {
         Vaga comId = new Vaga(
-                id,
-                nova.titulo(), nova.descricao(), nova.area(),
-                nova.senioridade(), nova.local(),
-                Boolean.TRUE.equals(nova.aceitaIniciante()), nova.empresaSlug());
-        return repositorio.trocar(id, comId).map(this::paraResposta);
+            UUID.randomUUID().toString(),
+            nova.titulo(), nova.descricao(), nova.area(),
+            nova.senioridade(), nova.local(),
+            nova.aceitaIniciante(), nova.empresaSlug());
+        return repository.salvar(comId);
+    }
+
+    // A ARMADILHA: o id vem da URL, não do corpo. Usar nova.id() aqui
+    // gravaria null no lugar do id e você perderia o registro.
+    public Optional<Vaga> trocar(String id, Vaga nova) {
+        Vaga comId = new Vaga(
+            id,
+            nova.titulo(), nova.descricao(), nova.area(),
+            nova.senioridade(), nova.local(),
+            nova.aceitaIniciante(), nova.empresaSlug());
+        return repository.trocar(id, comId);
     }
 
     public boolean apagar(String id) {
-        return repositorio.remover(id);
-    }
-
-    // Uma função só, usada por todos os métodos que devolvem vaga.
-    private VagaResposta paraResposta(Vaga v) {
-        return new VagaResposta(v.id(), v.titulo(), v.area(),
-                v.senioridade(), v.local(), v.aceitaIniciante(), v.empresaSlug());
+        return repository.remover(id);
     }
 }
